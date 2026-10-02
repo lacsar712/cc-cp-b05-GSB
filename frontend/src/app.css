@@ -134,3 +134,86 @@ td {
   font-size: 0.875rem;
   color: #475569;
 }
+
+.stats-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.stats-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.seg-btn {
+  background: #e2e8f0;
+  color: #0f172a;
+  padding: 0.4rem 0.8rem;
+}
+
+.seg-btn.active {
+  background: #0369a1;
+  color: #fff;
+}
+
+.seg-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hint {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.line-row.open td {
+  background: #eff6ff;
+}
+
+.totals-row td {
+  font-weight: 600;
+  background: #f1f5f9;
+}
+
+button.link {
+  background: none;
+  color: #0369a1;
+  padding: 0.15rem 0.35rem;
+  text-decoration: underline;
+}
+
+.detail-panel {
+  margin-top: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.detail-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.stats-foot {
+  margin-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.75rem;
+}
+
+.note {
+  color: #64748b;
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0;
+}

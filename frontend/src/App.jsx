@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
+import { StatsView } from "./StatsView.jsx";
 
 const TOKEN_KEY = "coldchain_token";
 const USER_KEY = "coldchain_user";
@@ -32,6 +33,7 @@ export function App() {
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState("list");
 
   const authHeaders = useCallback(() => {
     const h = { "Content-Type": "application/json" };
@@ -89,6 +91,7 @@ export function App() {
     setToken(null);
     setUser(null);
     setRows([]);
+    setView("list");
   }
 
   async function onSubmit(e) {
@@ -169,6 +172,14 @@ export function App() {
           <p class="sub">温度不超过 8℃ 为合格，否则为超温。</p>
         </div>
         <div class="user">
+          <button
+            type="button"
+            class="secondary"
+            style={{ marginRight: "0.5rem" }}
+            onClick={() => setView(view === "stats" ? "list" : "stats")}
+          >
+            {view === "stats" ? "返回读数列表" : "合格率对照"}
+          </button>
           {user?.username}（{isWriter ? "记录员" : "值班员"}）
           <button type="button" class="secondary" style={{ marginLeft: "0.5rem" }} onClick={logout}>
             退出
@@ -176,7 +187,9 @@ export function App() {
         </div>
       </div>
 
-      {isWriter && (
+      {view === "stats" && <StatsView authHeaders={authHeaders} isWriter={isWriter} />}
+
+      {view === "list" && isWriter && (
         <div class="card">
           <h2 style={{ marginTop: 0, fontSize: "1.1rem" }}>提交读数</h2>
           <form onSubmit={onSubmit}>
@@ -214,6 +227,7 @@ export function App() {
         </div>
       )}
 
+      {view === "list" && (
       <div class="card">
         <h2 style={{ marginTop: 0, fontSize: "1.1rem" }}>读数列表</h2>
         <table>
@@ -252,6 +266,7 @@ export function App() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

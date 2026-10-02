@@ -9,6 +9,14 @@ from passlib.context import CryptContext
 
 from db import create_pool, ensure_schema_async, seed_if_empty
 from rules import judge_temp
+from stats import (
+    LINE_SQL,
+    WINDOW_WHERE_SQL,
+    line_stats,
+    parse_cutoff,
+    parse_window_hours,
+    window_start,
+)
 
 SECRET = os.environ.get("JWT_SECRET", "coldchain-probe-dev-secret")
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -160,6 +168,116 @@ async def create_reading(request: web.Request) -> web.Response:
     )
 
 
+def _window_params(request: web.Request) -> tuple[float, datetime, datetime]:
+    """解析窗宽与截止时刻；截止缺省为服务端当前时刻。"""
+    try:
+        hours = parse_window_hours(request.query.get("window_hours"))
+        cutoff = parse_cutoff(request.query.get("cutoff"))
+    except ValueError as exc:
+        raise web.HTTPBadRequest(
+            text=json.dumps({"detail": str(exc)}, ensure_ascii=False),
+            content_type="application/json",
+        ) from exc
+    return hours, cutoff, window_start(cutoff, hours)
+
+
+async def pass_rate_summary(request: web.Request) -> web.Response:
+    """厢线合格率小时窗汇总：全部聚合在服务端 SQL 内完成。"""
+    require_user(request)
+    hours, cutoff, start = _window_params(request)
+    pool: asyncpg.Pool = request.app["pool"]
+    rows = await pool.fetch(
+        f"""
+        SELECT {LINE_SQL} AS line,
+               COUNT(*) FILTER (WHERE verdict = '合格') AS pass_count,
+               COUNT(*) FILTER (WHERE verdict = '超温') AS overtemp_count
+        FROM probe_readings
+        WHERE {WINDOW_WHERE_SQL}
+        GROUP BY 1
+        ORDER BY 1
+        """,
+        start,
+        cutoff,
+    )
+    lines = [
+        line_stats(r["line"], int(r["pass_count"]), int(r["overtemp_count"]))
+        for r in rows
+    ]
+    totals = line_stats(
+        "全部",
+        sum(x["pass_count"] for x in lines),
+        sum(x["overtemp_count"] for x in lines),
+    )
+    return web.json_response(
+        {
+            "window_hours": hours,
+            "cutoff": cutoff.isoformat(),
+            "window_start": start.isoformat(),
+            "lines": lines,
+            "totals": totals,
+        }
+    )
+
+
+async def pass_rate_detail(request: web.Request) -> web.Response:
+    """按厢线重查明细行：与汇总同一过滤口径；调用方带回汇总下发的截止时刻可零误差对拍。"""
+    require_user(request)
+    hours, cutoff, start = _window_params(request)
+    line = str(request.query.get("line", "")).strip()
+    if not line:
+        raise web.HTTPBadRequest(
+            text=json.dumps({"detail": "缺少厢线参数 line"}, ensure_ascii=False),
+            content_type="application/json",
+        )
+    pool: asyncpg.Pool = request.app["pool"]
+    stat = await pool.fetchrow(
+        f"""
+        SELECT COUNT(*) FILTER (WHERE verdict = '合格') AS pass_count,
+               COUNT(*) FILTER (WHERE verdict = '超温') AS overtemp_count
+        FROM probe_readings
+        WHERE {WINDOW_WHERE_SQL} AND {LINE_SQL} = $3
+        """,
+        start,
+        cutoff,
+        line,
+    )
+    rows = await pool.fetch(
+        f"""
+        SELECT id, probe_id, temp_c, verdict, reason, processed_at
+        FROM probe_readings
+        WHERE {WINDOW_WHERE_SQL} AND {LINE_SQL} = $3
+        ORDER BY processed_at DESC, id DESC
+        """,
+        start,
+        cutoff,
+        line,
+    )
+    return web.json_response(
+        {
+            "line": line,
+            "window_hours": hours,
+            "cutoff": cutoff.isoformat(),
+            "window_start": start.isoformat(),
+            "totals": line_stats(
+                line, int(stat["pass_count"]), int(stat["overtemp_count"])
+            ),
+            "rows": [
+                {
+                    "id": r["id"],
+                    "probe_id": r["probe_id"],
+                    "temp_c": r["temp_c"],
+                    "verdict": r["verdict"],
+                    "reason": r["reason"],
+                    "processed_at": r["processed_at"].isoformat()
+                    if r["processed_at"]
+                    else None,
+                }
+                for r in rows
+            ],
+        }
+    )
+
+
 async def on_startup(app: web.Application) -> None:
     pool = await create_pool()
     app["pool"] = pool
@@ -179,6 +297,8 @@ def create_app() -> web.Application:
     app.router.add_post("/api/auth/login", login)
     app.router.add_get("/api/readings", list_readings)
     app.router.add_post("/api/readings", create_reading)
+    app.router.add_get("/api/stats/pass-rate", pass_rate_summary)
+    app.router.add_get("/api/stats/pass-rate/detail", pass_rate_detail)
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
     return app
