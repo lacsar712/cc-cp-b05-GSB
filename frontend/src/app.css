@@ -134,3 +134,80 @@ td {
   font-size: 0.875rem;
   color: #475569;
 }
+
+.board-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.win-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ctl-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+button.seg {
+  background: #e2e8f0;
+  color: #0f172a;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+button.seg.active {
+  background: #0369a1;
+  color: #fff;
+}
+
+.line-row {
+  cursor: pointer;
+}
+
+.line-row:hover {
+  background: #f8fafc;
+}
+
+.detail-row td {
+  background: #f8fafc;
+}
+
+.detail-table {
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.total-row td {
+  font-weight: 600;
+  border-top: 2px solid #cbd5e1;
+  border-bottom: none;
+}
+
+.over-hot {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.winline {
+  margin-bottom: 0.5rem;
+}
+
+.board-foot {
+  margin-top: 0.75rem;
+}
+
+.caliber {
+  font-size: 0.8rem;
+  margin-bottom: 0;
+}
